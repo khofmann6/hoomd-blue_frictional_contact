@@ -229,7 +229,7 @@ class FrictionLJCoulomb(FrictionalPair):
             "params",
             "particle_types",
             TypeParameterDict(
-                epsilon=float, sigma=float, kappa_f=float, kT=float, len_keys=2
+                epsilon=float, sigma=float, kappa_f=float, kT=float, force_flag=float, len_keys=2
             ),
         )
         self._add_typeparam(params)
@@ -351,6 +351,7 @@ class FrictionLJCoulombNewton(FrictionalPair):
                 gamma_f=float,
                 kappa_f=float,
                 kT=float,
+                force_flag=float,
                 len_keys=2,
             ),
         )
@@ -451,7 +452,7 @@ class FrictionLJLinear(FrictionalPair):
             "params",
             "particle_types",
             TypeParameterDict(
-                epsilon=float, sigma=float, gamma_f=float, kT=float, len_keys=2
+                epsilon=float, sigma=float, gamma_f=float, kT=float, force_flag=float, len_keys=2
             ),
         )
         self._add_typeparam(params)

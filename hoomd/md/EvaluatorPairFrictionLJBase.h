@@ -50,6 +50,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
         Scalar
             kappa; // kappa parameter of the frictional contacts (optional depends on friction type)
         Scalar pair_temp; // Temperature of the pairwise thermostat
+        Scalar flag; // Flag to turn off the conservative forces
 
 #ifdef ENABLE_HIP
         //! Set CUDA memory hints
@@ -79,12 +80,14 @@ template<class Derived> class EvaluatorPairFrictionLJBase
             Scalar gamma_f = v.contains("gamma_f") ? v["gamma_f"].cast<Scalar>() : Scalar(0.0);
             Scalar kappa_f = v.contains("kappa_f") ? v["kappa_f"].cast<Scalar>() : Scalar(0.0);
             auto kT(v["kT"].cast<Scalar>());
+            auto force_flag(v["force_flag"].cast<Scalar>());
 
             sigma_6 = sigma * sigma * sigma * sigma * sigma * sigma;
             epsilon_x_4 = Scalar(4.0) * epsilon;
             gamma = gamma_f;
             kappa = kappa_f;
             pair_temp = kT;
+            flag = force_flag;
             }
 
         pybind11::object toPython()
@@ -97,6 +100,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
             if (kappa != Scalar(0.0))
                 v["kappa_f"] = kappa;
             v["kT"] = Scalar(1.0) * pair_temp;
+            v["force_flag"] = Scalar(1.0) * flag;
             return v;
             }
 
@@ -120,6 +124,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
         \param gamma Gamma parameter of the frictional contact
         \param kappa Kappa parameter of the frictional contact
         \param pair_temp Pair temperature of the frictional contact
+        \param flag Flag to turn off the conservative forces
         \param _params Per type pair parameters of this potential
     */
     HOSTDEVICE EvaluatorPairFrictionLJBase(Scalar3& _dr,
@@ -134,7 +139,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
           dia_i(_dia_i), dia_j(_dia_j),
           lj1(_params.epsilon_x_4 * _params.sigma_6 * _params.sigma_6),
           lj2(_params.epsilon_x_4 * _params.sigma_6), gamma(_params.gamma), kappa(_params.kappa),
-          pair_temp(_params.pair_temp)
+          pair_temp(_params.pair_temp), flag(_params.flag)
         {
         }
 
@@ -289,7 +294,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
 
             //! Calculation of the Rotational Friction force and torque
             vec3<Scalar> f_f = factor_f * (P_e_v + cross(e_ij, wiRiwjRj));
-            vec3<Scalar> exff = cross(e_ij, f_f);
+            vec3<Scalar> exff = flag * cross(e_ij, f_f);
 
             //! Noise for rotational friction
             Scalar sigma_f = fast::sqrt(pair_temp / m_deltaT);
@@ -313,7 +318,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
             t_j = (d_j / Scalar(2.0)) * (exff + t_r);
 
             //! Add all forces
-            f = f + f_f + f_r;
+            f = flag * (f + f_f) + f_r;
             }
 
         force = vec_to_scalar3(f);
@@ -357,6 +362,7 @@ template<class Derived> class EvaluatorPairFrictionLJBase
     Scalar gamma;     //!< Optional gamma parameter from the constructor
     Scalar kappa;     //!< Optional kappa parameter from the constructor
     Scalar pair_temp; //!< User set temperature for the DPD like PRNG
+    Scalar flag; //!< User set flag to turn off the conservative force and torque
     Scalar m_deltaT;  //!< Timestep size stored from constructor
     uint16_t m_seed;  //!< User set seed for thermostat PRNG
     unsigned int m_i; //!< Index of first particle. For use in PRNG
